@@ -7,13 +7,14 @@ import { IntlProvider } from 'react-intl'
 import { ContentfulClient, ContentfulProvider } from 'react-contentful'
 
 import HowRichAmI, { HowRichAmIStandalone } from 'components/HowRichAmI'
+import CryptoRichAmI, { CryptoRichAmIStandalone } from 'components/CryptoRichAmI'
 
 const {
   REACT_APP_CONTENTFUL_SPACE,
   REACT_APP_CONTENTFUL_ACCESS_TOKEN
 } = process.env
 
-const primaryColor = '#6c0000'
+const primaryColor = '#b31121'
 const secondaryColor = '#edede5'
 const sliderHeight = 12
 
@@ -70,7 +71,9 @@ const App = () => <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
         <Route path='/' exact component={HowRichAmIStandalone} />
+        <Route path='/crypto' component={CryptoRichAmIStandalone} />
         <Route path='/embed' component={HowRichAmI} />
+        <Route path='/embed-crypto' component={CryptoRichAmI} />
       </Router>
     </IntlProvider>
   </ContentfulProvider>
