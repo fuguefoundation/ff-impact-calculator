@@ -35,7 +35,12 @@ export const getCurrency = countryCode => {
   }
 }
 export const getCurrencyCode = countryCode => getCurrency(countryCode).alphaCode
-
+export const getCryptoExchange = coinCode => {
+    let exchange = COIN_EXCHANGE_RATES[coinCode];
+    if(exchange != undefined){
+        return exchange.rate;
+    }
+} 
 // calculate how to adjust for household size using OECD equivalised income
 // the weightings are for first adult, subsequent adults and children respectively:
 //   1, 0.7, 0.5
@@ -50,42 +55,42 @@ export const householdEquivalizationFactor = ({adults = 0, children = 0}) =>
   ).toNumber()
 
 // PPP conversion - returns an amount in Internationalized Dollar$
-export const internationalizeIncome = (income, countryCode) => BigNumber(income)
+export const internationalizeIncome = (donation, countryCode) => BigNumber(donation)
   .multipliedBy(EXCHANGE_RATES[countryCode].rate) // convert cryptoUSD price to local currency,
   .dividedBy(PPP_CONVERSION[countryCode].factor) // then determine purchasing price parity
   .decimalPlaces(2)
   .toNumber()
 
 // Exchange rate currency conversion, returns an amount in USD
-export const convertIncome = (income, coinCode) => BigNumber(income)
+export const convertIncome = (donation, coinCode) => BigNumber(donation)
   .multipliedBy(COIN_EXCHANGE_RATES[coinCode].rate)
   .decimalPlaces(2)
   .toNumber()
 
-  // equivalises an income to a particular household composition
-  export const equivalizeIncome = (income, household) => BigNumber(income)
+// equivalises a donation to a particular household composition
+export const equivalizeIncome = (donation, household) => BigNumber(donation)
   .dividedBy(householdEquivalizationFactor(household))
   .decimalPlaces(2)
   .toNumber()
 
-// calculate how many times the median income a person's income is
-export const getMedianMultiple = income => BigNumber(income)
-  .dividedBy(MEDIAN_INCOME)
+// calculate how many times the monthly median income a person's donation is
+export const getMedianMultiple = donation => BigNumber(donation)
+  .dividedBy(MEDIAN_INCOME/12) //divide for monthly rate
   .decimalPlaces(1)
   .toNumber()
 
 // gold-plated way of multiplying by a decimal
-export const getIncomeAfterDonating = (income, donationPercentage) =>
-  BigNumber(income)
+export const getIncomeAfterDonating = (donation, donationPercentage) =>
+  BigNumber(donation)
     .times(BigNumber(100).minus(donationPercentage).dividedBy(100))
     .decimalPlaces(2)
     .toNumber()
 
-// the main event. takes an income, country code and household composition,
+// the main event. takes a donation, country code and household composition,
 // and returns a bunch of useful stats for making comparisons to the
 // rest of the world
-export const calculate = ({ income, countryCode, coinCode, household }) => {
-  const convertedIncome = convertIncome(income, coinCode)
+export const calculate = ({ donation, countryCode, coinCode, household }) => {
+  const convertedIncome = convertIncome(donation, coinCode)
   console.log("Converted Income: ", convertedIncome)
   const internationalizedIncome = internationalizeIncome(convertedIncome, countryCode)
   console.log("Internationalized Income ", internationalizedIncome)

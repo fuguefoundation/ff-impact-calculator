@@ -26,7 +26,7 @@ import { withStyles } from '@material-ui/core/styles'
 
 import COUNTRIES from 'lib/calculate/data/countries.json'
 import COINS from 'lib/calculate/data/coins.json'
-import { calculate, getCurrencyCode, getDonationComparisonAmount } from 'lib/calculate/index_crypto'
+import { calculate, getCurrencyCode, getCryptoExchange, getDonationComparisonAmount } from 'lib/calculate/index_crypto'
 import { COMPARISONS, MEDIAN_INCOME } from '../../lib/calculate/index_crypto'
 
 import { Page } from 'components/Contentful'
@@ -63,7 +63,8 @@ export const getCountryName = countryCode => {
 
 export const parseNumericInput = input => {
   if (input === '') return ''
-  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+).*/g, '$1')).toNumber()
+  console.log(input)
+  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)*/g, '$1')).toNumber()
   return isNaN(val) ? '' : val
 }
 
@@ -78,22 +79,22 @@ const controlsStyles = theme => ({
   }
 })
 
-const validateSettings = ({ income, countryCode, coinCode, household }) => [
+const validateSettings = ({ donation, countryCode, coinCode, household }) => [
   validCountry(countryCode),
   validCoin(coinCode),
-  validInteger(income) && greaterThanZero(income),
+  validInteger(donation) && greaterThanZero(donation),
   validInteger(household.adults) && greaterThanZero(household.adults),
   validInteger(household.children)
 ].every(a => a)
 
-const Controls = withStyles(controlsStyles)(({ income, countryCode, coinCode, household, onChange, onCalculate, classes }) => {
+const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, onChange, onCalculate, classes }) => {
   // change handlers
   const handleCountryChange = event => onChange({ countryCode: event.target.value })
   const handleCoinChange = event => onChange({ coinCode: event.target.value })
 
   const handleIncomeChange = event => {
-    const income = parseNumericInput(event.target.value)
-    onChange({ income })
+    const donation = parseNumericInput(event.target.value)
+    onChange({ donation })
   }
 
   const handleHouseholdChange = (event, key) => {
@@ -102,7 +103,7 @@ const Controls = withStyles(controlsStyles)(({ income, countryCode, coinCode, ho
     onChange({ household: { ...household, ...{ [key]: val } } })
   }
 
-  const isValid = validateSettings({ income, countryCode, coinCode, household })
+  const isValid = validateSettings({ donation, countryCode, coinCode, household })
 
   return <form className={classes.root}>
     <Grid container spacing={GRID_SPACING}>
@@ -137,10 +138,10 @@ const Controls = withStyles(controlsStyles)(({ income, countryCode, coinCode, ho
 
       <Grid item xs={12} sm={6} md={3}>
         <FormControl fullWidth>
-          <InputLabel htmlFor='income'>Donation</InputLabel>
+          <InputLabel htmlFor='donation'>Donation</InputLabel>
           <CenteredInput
-            value={income}
-            id='income'
+            value={donation}
+            id='donation'
             onChange={handleIncomeChange}
             endAdornment={<InputAdornment position='end'>{coinCode}</InputAdornment>}
           />
@@ -152,7 +153,7 @@ const Controls = withStyles(controlsStyles)(({ income, countryCode, coinCode, ho
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
-          <span></span>
+          <span>{getCryptoExchange(coinCode)}</span>
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
@@ -180,7 +181,7 @@ const Controls = withStyles(controlsStyles)(({ income, countryCode, coinCode, ho
 })
 
 Controls.propTypes = {
-  income: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  donation: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   countryCode: PropTypes.string.isRequired,
   coinCode: PropTypes.string.isRequired,
   household: PropTypes.shape({
@@ -213,10 +214,11 @@ const getIncomeCentileData = ({ incomeCentile, incomeTopPercentile }) => ({
   ]
 })
 
+// divide MEDIAN_INCOME by 12 for monthly stat
 const getMedianChartData = ({ equivalizedIncome }) => ({
-  labels: ["Median person's income", 'Your income'],
+  labels: ["Median person's monthly income", 'Your donation'],
   series: [
-    [MEDIAN_INCOME, equivalizedIncome]
+    [MEDIAN_INCOME/12, equivalizedIncome]
   ]
 })
 
@@ -258,14 +260,14 @@ const calculationStyles = theme => ({
   }
 })
 
-const Calculation = withStyles(calculationStyles)(({ income, countryCode, coinCode, household, classes }) => {
+const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, classes }) => {
   try {
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ income, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ donation, countryCode, coinCode, household })
     if (incomeCentile <= 50) {
       return <Grid container spacing={GRID_SPACING}>
         <Grid item xs={12}>
           <Typography paragraph>
-            Sorry, the income you entered is below the global median income.{' '}
+            Sorry, the donation you entered is below the global median income.{' '}
             We only have data for incomes higher than the global median.
           </Typography>
         </Grid>
@@ -277,7 +279,7 @@ const Calculation = withStyles(calculationStyles)(({ income, countryCode, coinCo
       <Grid item xs={12}>
         <Typography className={classes.mainText}>
           If you make a donation of{' '}
-          <FormattedNumber value={income} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={0} />
+          <FormattedNumber value={donation} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={0} />
         </Typography>
         <Typography className={classes.subMainText}>
           (in a household of {household.adults} adult{household.adults > 1 ? 's' : ''}
@@ -289,11 +291,11 @@ const Calculation = withStyles(calculationStyles)(({ income, countryCode, coinCo
       </Grid>
       <Grid item sm={6}>
         <PieChart data={incomeCentileData} />
-        <Typography className={classes.chartText}><em>{incomeTopPercentile}%</em> of the global population earns more income per month than your donation</Typography>
+        <Typography className={classes.chartText}><em>{100 - incomeTopPercentile}%</em> of the global population earns less income per month than your donation</Typography>
       </Grid>
       <Grid item sm={6}>
         <BarChart data={getMedianChartData({ equivalizedIncome })} />
-        <Typography className={classes.chartText}>Your income is more than <em>{medianMultiple}</em> times the global median</Typography>
+        <Typography className={classes.chartText}>Your donation is more than <em>{medianMultiple}</em> times the global monthly median</Typography>
         <Typography variant='caption'>
           Income shown in household-equivalised{' '}
           <Link href='https://en.wikipedia.org/wiki/International_United_States_dollar' target='_blank' rel='noreferrer'>
@@ -317,19 +319,19 @@ const DONATION_SLIDER_MARKS = [...Array(MAX_DONATION_SLIDER_VALUE).keys()]
   .filter(v => v % 5 === 0)
   .map(v => ({ value: v, label: formatPercentage(v) }))
 
-const DonationCalculation = withStyles(calculationStyles)(({ income, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, classes }) => {
+const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, classes }) => {
   try {
-    const donationIncome = BigNumber(income * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage
-    //const donationValue = BigNumber(income).minus(donationIncome).dp(2).toNumber()
+    const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage
+    //const donationValue = BigNumber(donation).minus(donationIncome).dp(2).toNumber()
     console.log("Donation Income: ", donationIncome)
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ income: donationIncome, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, coinCode, household })
     const donationValue = BigNumber(equivalizedIncome * (100 + donationPercentage) / 100).dp(2).toNumber()
     console.log("Donation Value: ", donationValue)
     if (incomeCentile <= 50) return null
     return <Grid container spacing={GRID_SPACING} justify='center' className={classes.root}>
       <Grid item xs={12}>
         <Typography className={classes.mainText}>
-          Donate {donationPercentage}% more ...
+          Donate {donationPercentage}% more...
         </Typography>
       </Grid>
       <Grid item xs={12}>
@@ -345,7 +347,7 @@ const DonationCalculation = withStyles(calculationStyles)(({ income, countryCode
       </Grid>
       <Grid item sm={12}>
         <Typography className={classes.mainText}>
-          … for a total of{' '}
+          ...for a total of{' '}
           <FormattedNumber value={donationIncome} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={2} />
           {/** <FormattedNumber value={donationValue} style='currency' currency={getCurrencyCode(countryCode)} minimumFractionDigits={0} maximumFractionDigits={0} /> */}
         </Typography>
@@ -353,13 +355,13 @@ const DonationCalculation = withStyles(calculationStyles)(({ income, countryCode
       <Grid item sm={6}>
         <PieChart data={getIncomeCentileData({ incomeCentile, incomeTopPercentile })} />
         <Typography className={classes.chartText}>
-          You would still be in the richest <em>{incomeTopPercentile}%</em> of the global population
+          You would be donating more than what <em>{100 - incomeTopPercentile}%</em> of the global population earn in a month
         </Typography>
       </Grid>
       <Grid item sm={6}>
         <BarChart data={getMedianChartData({ equivalizedIncome })} />
         <Typography className={classes.chartText}>
-          Your income would still be more than <em>{medianMultiple}</em> times the global median
+          This donation would be <em>{medianMultiple}</em> times the global monthly median
         </Typography>
       </Grid>
       <Grid item sm={12}>
@@ -443,7 +445,7 @@ const donationComparisonsStyles = theme => ({
 
 const DonationComparisons = withStyles(donationComparisonsStyles)(({ value, classes }) => <Grid container spacing={GRID_SPACING} justify='center'>
   <Grid item xs={12}>
-    <Typography className={classes.mainText}>… and this one donation could fund …</Typography>
+    <Typography className={classes.mainText}>And this one donation could fund...</Typography>
   </Grid>
   {COMPARISONS.map(Comparison => <Grid item xs={12} md={4} key={Comparison.id}>
     <DonationComparison value={value} comparison={Comparison} />
@@ -467,7 +469,7 @@ const headingStyles = theme => ({
 const Heading = withStyles(headingStyles)(({ classes }) => <header className={classes.root}>
   <Typography variant='h2'>Crypto Donation Impact Calculator</Typography>
   <Typography variant='subtitle1'>Find out how much global impact your crypto donation can have on the world</Typography>
-  <Typography variant='subtitle2'>See the original <a href="https://howrichami.givingwhatwecan.org/" target="_blank"><em>How Rich Am I?</em></a> calculator to learn how your income (fiat) compares globally</Typography>
+  <Typography variant='subtitle2'>See the original <a href="https://howrichami.givingwhatwecan.org/" target="_blank"><em>How Rich Am I?</em></a> calculator to learn how your annual income (in fiat) compares globally</Typography>
 </header>)
 
 /*const Methodology = () => <Page showTitle={false} slug='how-rich-am-i-methodology' />
@@ -514,7 +516,7 @@ const creditsStyles = theme => ({
 })
 const Credits = withStyles(creditsStyles)(({ classes }) => <div className={classes.root}>
   <Typography>
-    This project is a <a href="https://github.com/fuguefoundation/how-rich-am-i" target="_blank">fork</a> of the How Rich Am I Calculator developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, a global community of people pledging to donate more, and donate more effectively. More information is available here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
+    This project is a <a href="https://github.com/fuguefoundation/how-rich-am-i" target="_blank">fork</a> of the <em>How Rich Am I Calculator</em> developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, a global community of people pledging to donate more, and donate more effectively. More information is available here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
   </Typography>
 </div>)
 
@@ -604,7 +606,7 @@ class _CryptoRichAmI extends React.PureComponent {
     super(props)
     const qsSettings = this.getSettingsFromQueryString(props)
     const settings = {
-      income: '',
+      donation: '',
       countryCode: 'USA',
       coinCode: '',
       household: {
@@ -629,8 +631,8 @@ class _CryptoRichAmI extends React.PureComponent {
     const { location } = props
     const settings = {}
     if (location.search) {
-      const { income, countryCode, household, country, adults, children } = qs.parse(location.search.replace(/^\?/, ''))
-      if (income) settings.income = parseInt(income, 10)
+      const { donation, countryCode, household, country, adults, children } = qs.parse(location.search.replace(/^\?/, ''))
+      if (donation) settings.donation = parseInt(donation, 10)
       if (countryCode) settings.countryCode = countryCode
       if (household) {
         settings.household = {}
@@ -650,11 +652,11 @@ class _CryptoRichAmI extends React.PureComponent {
 
   updateQueryString = (method = 'push') => {
     const { history, location } = this.props
-    const { income, countryCode, household } = this.state
+    const { donation, countryCode, household } = this.state
     console.log('updating query string', method)
     history[method]({
       pathname: location.pathname,
-      search: `?${qs.stringify({ income, countryCode, household })}`
+      search: `?${qs.stringify({ donation, countryCode, household })}`
     })
   }
 
