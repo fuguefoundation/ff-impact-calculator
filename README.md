@@ -48,4 +48,8 @@ const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp
 
 ## Enhancements
 
-The main enhancement to add will be using an API from a crypto exchange to pull in the market prices of a selected cryptocurrency in realtime. Right now, the app is pulling those values from a static object. I'd also like the app to be able to accept decimals (e.g., .01 BTC or 2.25 ETH) for the donation value. I'll submit this as a bounty on Gitcoin.
+[Issue](https://github.com/fuguefoundation/ff-impact-calculator/issues/1): The main enhancement to add will be using an API from a crypto exchange to pull in the market prices of a selected cryptocurrency in realtime. Right now, the app is pulling those values from a static object. I'd also like the app to be able to accept decimals (e.g., .01 BTC or 2.25 ETH) for the donation value. I'll submit this as a bounty on Gitcoin.
+
+## Troubleshooting
+
+Maybe others will not have this issue or knows the solution, but there was an error on `npm install` when adding `simple-interpolation`. Ultimately, I had to manually copy this [`dist`](https://github.com/fuguefoundation/ff-impact-calculator/tree/master/misc) folder into `node_modules/simple-interpolation`.
