@@ -63,7 +63,6 @@ export const getCountryName = countryCode => {
 
 export const parseNumericInput = input => {
   if (input === '') return ''
-  console.log(input)
   const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)*/g, '$1')).toNumber()
   return isNaN(val) ? '' : val
 }
@@ -516,7 +515,7 @@ const creditsStyles = theme => ({
 })
 const Credits = withStyles(creditsStyles)(({ classes }) => <div className={classes.root}>
   <Typography>
-    This project is a <a href="https://github.com/fuguefoundation/how-rich-am-i" target="_blank">fork</a> of the <em>How Rich Am I Calculator</em> developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, a global community of people pledging to donate more, and donate more effectively. More information is available here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
+    This project is a <a href="https://github.com/fuguefoundation/ff-impact-calculator" target="_blank">fork</a> of the <em>How Rich Am I Calculator</em> developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, a global community of people pledging to donate more, and donate more effectively. More information is available here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
   </Typography>
 </div>)
 
