@@ -1,50 +1,51 @@
-# How Rich Am I?
+# Crypto Donation Impact Calculator
 
-A calculator to determine how rich you are compared to the rest of the world.
+[Working prototype](https://fuguefoundation.org/dev/impact/)
 
-_This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). See their site for docs._
+This project is an effort to incorporate more metrics into the FF smart contract donation platform, basically a way for people to see what the amount of a potential cryptocurrency donation translates into in terms of real world change. Enter the [*How Rich Am I*](https://howrichami.givingwhatwecan.org/) calculator from [Giving What We Can](https://www.givingwhatwecan.org/), of which this repo is a [fork](https://github.com/centre-for-effective-altruism/how-rich-am-i) (PR forthcoming). There are of course a few tweeks. In lieu of entering an annual income, this calculator takes a donation denominated in crypto (currently BTC, ETH, and stable coin) and compares the equalized amount (accounting for country of origin and size of household) with global incomes on a monthly, rather than annual, basis. In others words, how much does your donation stack up to what others earn each month?
 
-## Methodology
+## Changes to Original Codebase
 
-The estimated income percentiles used in this calculator can be [found here](https://docs.google.com/spreadsheets/d/1OSiA2dnbvZ5pUti2DO_HJU8phyfCDC-hNz5McTVcEnM/edit#gid=2139097862).
+It took a while to figure out first how the app worked and then how to add in the appropriate crypto exchange rates and change the timeframe of the comparisons. The learning process was part code, part macro-economics. We think we got it right, but would certainly appreciate a second set of eyes on the math. These are the specifics on the [data and methodology](https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology) of the original calculator, which we use with certain modificaitons. Noted below are a few key examples, bearing in mind that the goal is to compare a single donation denominated in crypto against the *monthly* global income denominated in equalized, international dollars.
 
-The calculator was last updated in mid-2019. It is currently based on data from the 2015 working paper [The Future of Worldwide Income Distribution](https://web.archive.org/web/20160518000924/https:/www.piie.com/sites/default/files/publications/wp/wp15-7.pdf) by Tomáš Hellebrandt and Paolo Mauro of the Peterson Institute for International Economics. Raw data from the paper is [available here](https://web.archive.org/web/20160518000857/https:/www.piie.com/sites/default/files/publications/wp/data/wp15-7.xlsx). We use an adjusted version of the data presented in Figure 5 of the paper. Our adjustment calculations can be [found here](https://drive.google.com/open?id=17_XiLHc6g8FRPa5ukiU-YjGByHbCV_Jr).
+1. The added files include the `CryptoRichAmI` component and the additions in the `calculate` library, notably a modified `index_crypto.js` file and the addition of two JSON files for the data. The component is added into the routing in `App.js`.
+2. More specifically for the calculation modifications:
 
-Hellebrandt and Mauro present (a) an estimate of the global individual income distribution in 2013 (in some cases using data collected before 2013 and adjusted for estimated growth up to 2013) and (b) a forecast of the global individual income distribution in 2035. To roughly account for economic growth between 2013 and 2019, we estimate 2019 income at a given percentile to be 73% its 2013 value plus 27% its 2035 forecast. That is, we linearly interpolate between 2013 values and 2035 forecasts. (Since income growth is more likely to follow a roughly exponential curve, we expect that this interpolation overestimates global 2019 incomes, and thus underestimates the user’s income percentile.) Finally, income figures from Hellebrandt and Mauro are presented in 2011 USD, adjusted for purchasing power parity at the national level. We therefore increase dollar figures by 13.4% to account for [US inflation](https://www.usinflationcalculator.com/inflation/consumer-price-index-and-annual-percent-changes-from-1913-to-2008/) from mid-2011 to mid-2019.
+`/lib/calculate/index_crypto.js`
+``` javascript
+// multiply `amount` by 12 to make monthly comparisons
+export const interpolateIncomeCentileByAmount = amount => BigNumber(interpolateIncomeCentile({ y: amount*12 }))
+    .decimalPlaces(1)
+    .toNumber()
 
-Following Hellebrandt and Mauro, we define individual income to be household income divided by household size.
+// PPP conversion - returns an amount in Internationalized Dollar$
+export const internationalizeIncome = (donation, countryCode) => BigNumber(donation)
+  .multipliedBy(EXCHANGE_RATES[countryCode].rate) // first convert cryptoUSD price to local currency,
+  .dividedBy(PPP_CONVERSION[countryCode].factor) // then determine purchasing price parity
+  .decimalPlaces(2)
+  .toNumber()
 
-Please note that there are many problems with all underlying source data attempting to estimate the global income distribution—some of these are [discussed here](https://web.archive.org/web/20190708070656/https://80000hours.org/2017/04/how-accurately-does-anyone-know-the-global-distribution-of-income/). Any figures should therefore be taken with a grain of salt and treated as best guesses rather than established facts. [Other attempts](https://ourworldindata.org/global-economic-inequality) to estimate global income distribution get different, though broadly similar, results.
+// calculate how many times the monthly median income a person's donation is
+export const getMedianMultiple = donation => BigNumber(donation)
+  .dividedBy(MEDIAN_INCOME/12) //divide for monthly rate
+  .decimalPlaces(1)
+  .toNumber()
+```
 
+`components/CryptoRichAmI/index.js`
+``` javascript
+// divide MEDIAN_INCOME by 12 for monthly stat
+const getMedianChartData = ({ equivalizedIncome }) => ({
+  labels: ["Median person's monthly income", 'Your donation'],
+  series: [
+    [MEDIAN_INCOME/12, equivalizedIncome]
+  ]
+})
 
-## Other Data Sources + Import Instructions
+//Slider: add donation percentage, rather than subtract it
+const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() 
+```
 
-### PPP Conversion Data
+## Enhancements
 
-[PPP data is from the World Bank](https://data.worldbank.org/indicator/PA.NUS.PPP?view=chart)
-
-To sanitize the data for use in this application
-- Convert CSV to JSON (e.g. using csv2json or https://www.csvjson.com/csv2json)
-- use [jq](https://stedolan.github.io/jq/) to turn JSON into a useable object, selecting the most recent year for which there is data:
-  `jq 'map( { (."Country Code"|tostring):  . | to_entries | map(select(.key | match("\\d{4}"))) | map(select(.value | length > 0)) | select(length > 0) | sort_by(.key) | reverse | map({factor: .value, year: .key}) | .[0] } ) | add'`
-- Save the result to `./data/ppp_conversion.json`
-
-### Exchange rate data
-
-Exchange rate data is from the [World Bank Global Economic Monitor dataset](https://databank.worldbank.org/source/global-economic-monitor-(gem)),
-
-The export used the "Exchange rate, new LCU per USD extended backward, period average" series, including all countries (but excluding country groupings), and selecting whole years back to 2010.
-
-To sanitise:
-- Convert CSV to JSON (e.g. using csv2json or https://www.csvjson.com/csv2json)
-- use [jq](https://stedolan.github.io/jq/) to turn JSON into a useable object, selecting the most recent year for which there is data:
-  `jq 'map( { (."Country Code"|tostring):  . | to_entries | map(select(.key | match("\\d{4}\\s\\[\\d{4}\\]"))) | map(select(.value | length > 0)) | map(select(.value != "..")) | select(length > 0) | sort_by(.key) | reverse | map({rate: .value, year: .key}) | .[0] } ) | add'`
-- Use your favourite text editor to change the `year` values from `2018 [2018]` to just `2018`
-
-### Other country data
-
-Other country data, including mapping from countries to currency codes is provided by the [`country-data` package](https://www.npmjs.com/package/country-data).
-
-## Credits
-
-Income centile calculations by [Phil Trammell](https://philiptrammell.com/) and [Rob Wiblin](http://www.robwiblin.com/), code by [Sam Deere](https://app.effectivealtruism.org/funds), based on prior art by Jacob Hilton.
+The main enhancement to add will be using an API from a crypto exchange to pull in the market prices of a selected cryptocurrency in realtime. Right now, the app is pulling those values from a static object. I'd also like the app to be able to accept decimals (e.g., .01 BTC or 2.25 ETH) for the donation value. I'll submit this as a bounty on Gitcoin.
