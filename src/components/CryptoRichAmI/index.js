@@ -86,10 +86,19 @@ const validateSettings = ({ donation, countryCode, coinCode, household }) => [
   validInteger(household.children)
 ].every(a => a)
 
-const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, onChange, onCalculate, classes }) => {
+const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, exchangeRate, onChange, onCalculate, setExchangeRate, classes }) => {
+  const getExchangeRate = async (coinCode) => {
+    const rate = await getCryptoExchange(coinCode)
+    setExchangeRate(rate)
+  }
+
   // change handlers
   const handleCountryChange = event => onChange({ countryCode: event.target.value })
-  const handleCoinChange = event => onChange({ coinCode: event.target.value })
+  const handleCoinChange = event => {
+    const coinCode = event.target.value
+    onChange({ coinCode })
+    getExchangeRate(coinCode)
+  }
 
   const handleIncomeChange = event => {
     const donation = parseNumericInput(event.target.value)
@@ -152,7 +161,7 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
-          <span>{getCryptoExchange(coinCode)}</span>
+          <span>{exchangeRate ? `Current ${coinCode} price: ${exchangeRate} | User amount: ${donation}` : undefined}</span>
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
@@ -259,9 +268,9 @@ const calculationStyles = theme => ({
   }
 })
 
-const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, classes }) => {
+const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, exchangeRate, classes }) => {
   try {
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ donation, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ donation, countryCode, exchangeRate, household })
     if (incomeCentile <= 50) {
       return <Grid container spacing={GRID_SPACING}>
         <Grid item xs={12}>
@@ -318,12 +327,12 @@ const DONATION_SLIDER_MARKS = [...Array(MAX_DONATION_SLIDER_VALUE).keys()]
   .filter(v => v % 5 === 0)
   .map(v => ({ value: v, label: formatPercentage(v) }))
 
-const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, classes }) => {
+const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, exchangeRate, classes }) => {
   try {
     const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage
     //const donationValue = BigNumber(donation).minus(donationIncome).dp(2).toNumber()
     console.log("Donation Income: ", donationIncome)
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, exchangeRate, household })
     const donationValue = BigNumber(equivalizedIncome * (100 + donationPercentage) / 100).dp(2).toNumber()
     console.log("Donation Value: ", donationValue)
     if (incomeCentile <= 50) return null
@@ -617,6 +626,7 @@ class _CryptoRichAmI extends React.PureComponent {
 
     this.state = {
       ...settings,
+      exchangeRate: 0,
       donationPercentage: 10,
       showCalculations: validateSettings({ ...settings }),
       showMethodologyDialog: false
@@ -679,6 +689,8 @@ class _CryptoRichAmI extends React.PureComponent {
 
   setShowMethodologyDialog = showMethodologyDialog => this.setState({ showMethodologyDialog })
 
+  setExchangeRate = exchangeRate => this.setState({ exchangeRate })
+
   componentDidUpdate (prevProps) {
     // update our state if we hit the back button
     if (this.props.location.search !== prevProps.location.search) {
@@ -693,7 +705,7 @@ class _CryptoRichAmI extends React.PureComponent {
     return <div className={classes.container}>
       <Heading />
       <SpacedDivider variant='middle' />
-      <Controls {...this.state} onChange={this.handleControlsChange} onCalculate={this.handleCalculate}/>
+      <Controls {...this.state} onChange={this.handleControlsChange} onCalculate={this.handleCalculate} setExchangeRate={this.setExchangeRate}/>
       {showCalculations && <React.Fragment>
         <SpacedDivider variant='middle' />
         <Calculation {...this.state} />
