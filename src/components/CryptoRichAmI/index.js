@@ -63,12 +63,13 @@ export const getCountryName = countryCode => {
 
 export const parseNumericInput = input => {
   if (input === '') return ''
-  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)*/g, '$1')).toNumber()
+  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)(\.\d{0,2})?\d*/g, '$1$2')).toNumber()
   return isNaN(val) ? '' : val
 }
 
 export const validCountry = input => COUNTRIES.some(country => country.code === input)
 export const validCoin = input => COINS.some(coin => coin.code === input)
+export const validDonation = input => typeof input === 'number' && /^\d+(\.\d{0,2})?$/.test(input.toString()) && input > 0
 export const validInteger = input => typeof input === 'number' && /^\d+$/.test(input.toString())
 export const greaterThanZero = input => typeof input === 'number' && input > 0
 
@@ -81,7 +82,7 @@ const controlsStyles = theme => ({
 const validateSettings = ({ donation, countryCode, coinCode, household }) => [
   validCountry(countryCode),
   validCoin(coinCode),
-  validInteger(donation) && greaterThanZero(donation),
+  validDonation(donation),
   validInteger(household.adults) && greaterThanZero(household.adults),
   validInteger(household.children)
 ].every(a => a)
@@ -100,8 +101,11 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
     getExchangeRate(coinCode)
   }
 
-  const handleIncomeChange = event => {
-    const donation = parseNumericInput(event.target.value)
+  const handleIncomeChange = event => onChange({ donation: event.target.value })
+
+  const handleIncomeBlur = input => {
+    if (!input) return
+    const donation = parseNumericInput(input.toString())
     onChange({ donation })
   }
 
@@ -151,6 +155,7 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
             value={donation}
             id='donation'
             onChange={handleIncomeChange}
+            onBlur={() => handleIncomeBlur(donation)}
             endAdornment={<InputAdornment position='end'>{coinCode}</InputAdornment>}
           />
           <FormHelperText>
@@ -287,7 +292,7 @@ const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coin
       <Grid item xs={12}>
         <Typography className={classes.mainText}>
           If you make a donation of{' '}
-          <FormattedNumber value={donation} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={0} />
+          <FormattedNumber value={donation} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={2} />
         </Typography>
         <Typography className={classes.subMainText}>
           (in a household of {household.adults} adult{household.adults > 1 ? 's' : ''}
@@ -641,7 +646,7 @@ class _CryptoRichAmI extends React.PureComponent {
     const settings = {}
     if (location.search) {
       const { donation, countryCode, household, country, adults, children } = qs.parse(location.search.replace(/^\?/, ''))
-      if (donation) settings.donation = parseInt(donation, 10)
+      if (donation) settings.donation = parseNumericInput(donation)
       if (countryCode) settings.countryCode = countryCode
       if (household) {
         settings.household = {}
