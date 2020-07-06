@@ -63,7 +63,7 @@ export const getCountryName = countryCode => {
 
 export const parseNumericInput = input => {
   if (input === '') return ''
-  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)(\.\d{0,2})?\d*/g, '$1$2')).toNumber()
+  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)(\.\d{0,2})?.*/g, '$1$2')).toNumber()
   return isNaN(val) ? '' : val
 }
 

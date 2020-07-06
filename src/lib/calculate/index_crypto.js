@@ -7,7 +7,7 @@ import COMPARISONS from './data/comparisons.json'
 import BigNumber from 'bignumber.js'
 export { COMPARISONS }
 
-const KRAKEN_TICKER_API = 'https://api.kraken.com/0/public/Ticker';
+export const KRAKEN_TICKER_API = 'https://api.kraken.com/0/public/Ticker';
 
 // data interpolation
 const interpolateIncomeCentile = interpolate(
