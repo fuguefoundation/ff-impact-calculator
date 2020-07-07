@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import Grid from '@material-ui/core/Grid'
 import Container from '@material-ui/core/Container'
@@ -88,6 +88,8 @@ const validateSettings = ({ donation, countryCode, coinCode, household }) => [
 ].every(a => a)
 
 const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, exchangeRate, onChange, onCalculate, setExchangeRate, classes }) => {
+  const [inflightParsing, setInflightParsing] = useState(0);
+
   const getExchangeRate = async (coinCode) => {
     const rate = await getCryptoExchange(coinCode)
     setExchangeRate(rate)
@@ -101,12 +103,17 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
     getExchangeRate(coinCode)
   }
 
-  const handleIncomeChange = event => onChange({ donation: event.target.value })
+  const handleIncomeChange = event => {
+    clearTimeout(inflightParsing)
 
-  const handleIncomeBlur = input => {
-    if (!input) return
-    const donation = parseNumericInput(input.toString())
-    onChange({ donation })
+    const donationString = event.target.value
+    onChange({ donation: donationString })
+
+    const timeoutId = setTimeout(() => {
+      const donation = parseNumericInput(donationString)
+      onChange({ donation })
+    }, 700)
+    setInflightParsing(timeoutId)
   }
 
   const handleHouseholdChange = (event, key) => {
@@ -155,7 +162,6 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
             value={donation}
             id='donation'
             onChange={handleIncomeChange}
-            onBlur={() => handleIncomeBlur(donation)}
             endAdornment={<InputAdornment position='end'>{coinCode}</InputAdornment>}
           />
           <FormHelperText>
