@@ -126,7 +126,7 @@ const Controls = withStyles(controlsStyles)(({ income, countryCode, household, o
             endAdornment={<InputAdornment position='end'>{getCurrencyCode(countryCode)}</InputAdornment>}
           />
           <FormHelperText>
-            Enter your <strong>post-tax</strong> household income in{' '}
+            Enter your annual <strong>post-tax</strong> household income in{' '}
             {getCurrencyCode(countryCode)}
           </FormHelperText>
         </FormControl>
@@ -295,11 +295,15 @@ const DONATION_SLIDER_MARKS = [...Array(MAX_DONATION_SLIDER_VALUE).keys()]
   .filter(v => v % 5 === 0)
   .map(v => ({ value: v, label: formatPercentage(v) }))
 
+export const getDonationIncome = (income, donationPercentage) => BigNumber(income * (100 - donationPercentage) / 100).dp(2).toNumber()
+export const getDonationValue = (income, donationPercentage) => BigNumber(income).minus(getDonationIncome(income, donationPercentage)).dp(2).toNumber()
+
 const DonationCalculation = withStyles(calculationStyles)(({ income, countryCode, household, donationPercentage, onDonationPercentageChange, classes }) => {
   try {
-    const donationIncome = BigNumber(income * (100 - donationPercentage) / 100).dp(2).toNumber()
-    const donationValue = BigNumber(income).minus(donationIncome).dp(2).toNumber()
+    const donationIncome = getDonationIncome(income, donationPercentage)
+    const donationAmount = income - donationIncome
     const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ income: donationIncome, countryCode, household })
+    const donationValue = getDonationValue(convertedIncome, donationPercentage)
     if (incomeCentile <= 50) return null
     return <Grid container spacing={GRID_SPACING} justify='center' className={classes.root}>
       <Grid item xs={12}>
@@ -323,7 +327,7 @@ const DonationCalculation = withStyles(calculationStyles)(({ income, countryCode
           … you would have a household income of{' '}
           <FormattedNumber value={donationIncome} style='currency' currency={getCurrencyCode(countryCode)} minimumFractionDigits={0} maximumFractionDigits={0} />,{' '}
           and would make{' '}
-          <FormattedNumber value={donationValue} style='currency' currency={getCurrencyCode(countryCode)} minimumFractionDigits={0} maximumFractionDigits={0} />{' '}
+          <FormattedNumber value={donationAmount} style='currency' currency={getCurrencyCode(countryCode)} minimumFractionDigits={0} maximumFractionDigits={0} />{' '}
           in donations …
         </Typography>
       </Grid>
@@ -616,7 +620,6 @@ class _HowRichAmI extends React.PureComponent {
   updateQueryString = (method = 'push') => {
     const { history, location } = this.props
     const { income, countryCode, household } = this.state
-    console.log('updating query string', method)
     history[method]({
       pathname: location.pathname,
       search: `?${qs.stringify({ income, countryCode, household })}`
@@ -624,7 +627,6 @@ class _HowRichAmI extends React.PureComponent {
   }
 
   handleCalculate = () => {
-    console.log(this.state)
     if (!validateSettings({ ...this.state })) return
     this.updateQueryString()
     this.setShowCalculations(true)
