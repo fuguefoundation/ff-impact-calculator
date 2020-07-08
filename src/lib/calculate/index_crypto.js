@@ -2,11 +2,12 @@ import { currencies } from 'countryinfo'
 import { single as interpolate } from 'simple-interpolation';
 import INCOME_CENTILES from './data/income_centiles.json'
 import PPP_CONVERSION from './data/ppp_conversion.json'
-import COIN_EXCHANGE_RATES from './data/coin_exchange_rates.json'
 import EXCHANGE_RATES from './data/exchange_rates.json'
 import COMPARISONS from './data/comparisons.json'
 import BigNumber from 'bignumber.js'
 export { COMPARISONS }
+
+export const KRAKEN_TICKER_API = 'https://api.kraken.com/0/public/Ticker';
 
 // data interpolation
 const interpolateIncomeCentile = interpolate(
@@ -35,11 +36,17 @@ export const getCurrency = countryCode => {
   }
 }
 export const getCurrencyCode = countryCode => getCurrency(countryCode).alphaCode
-export const getCryptoExchange = coinCode => {
-    let exchange = COIN_EXCHANGE_RATES[coinCode];
-    if(exchange != undefined){
-        return exchange.rate;
-    }
+export const getCryptoExchange = async (coinCode) => {
+  const coinSymbol = coinCode === 'BTC' ? 'XBT' : coinCode;
+  const pair = `${coinSymbol}USD`;
+  const response = await fetch(`${KRAKEN_TICKER_API}?pair=${pair}`);
+  const body = await response.json();
+
+  if (body !== undefined) {
+    const key = coinSymbol === 'USDC' ? 'USDCUSD' : `X${coinSymbol}ZUSD`;
+    return body.result[key].b[0];
+  }
+  throw new TypeError('Kraken API response body is undefined');
 } 
 // calculate how to adjust for household size using OECD equivalised income
 // the weightings are for first adult, subsequent adults and children respectively:
@@ -62,8 +69,8 @@ export const internationalizeIncome = (donation, countryCode) => BigNumber(donat
   .toNumber()
 
 // Exchange rate currency conversion, returns an amount in USD
-export const convertIncome = (donation, coinCode) => BigNumber(donation)
-  .multipliedBy(COIN_EXCHANGE_RATES[coinCode].rate)
+export const convertIncome = (donation, exchangeRate) => BigNumber(donation)
+  .multipliedBy(exchangeRate)
   .decimalPlaces(2)
   .toNumber()
 
@@ -89,8 +96,8 @@ export const getIncomeAfterDonating = (donation, donationPercentage) =>
 // the main event. takes a donation, country code and household composition,
 // and returns a bunch of useful stats for making comparisons to the
 // rest of the world
-export const calculate = ({ donation, countryCode, coinCode, household }) => {
-  const convertedIncome = convertIncome(donation, coinCode)
+export const calculate = ({ donation, countryCode, exchangeRate, household }) => {
+  const convertedIncome = convertIncome(donation, exchangeRate)
   console.log("Converted Income: ", convertedIncome)
   const internationalizedIncome = internationalizeIncome(convertedIncome, countryCode)
   console.log("Internationalized Income ", internationalizedIncome)

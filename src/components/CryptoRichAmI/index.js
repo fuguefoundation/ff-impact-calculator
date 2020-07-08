@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import Grid from '@material-ui/core/Grid'
 import Container from '@material-ui/core/Container'
@@ -63,12 +63,13 @@ export const getCountryName = countryCode => {
 
 export const parseNumericInput = input => {
   if (input === '') return ''
-  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)*/g, '$1')).toNumber()
+  const val = BigNumber(input.replace(/,/g, '').replace(/^(\d+)(\.\d{0,2})?.*/g, '$1$2')).toNumber()
   return isNaN(val) ? '' : val
 }
 
 export const validCountry = input => COUNTRIES.some(country => country.code === input)
 export const validCoin = input => COINS.some(coin => coin.code === input)
+export const validDonation = input => typeof input === 'number' && /^\d+(\.\d{0,2})?$/.test(input.toString()) && input > 0
 export const validInteger = input => typeof input === 'number' && /^\d+$/.test(input.toString())
 export const greaterThanZero = input => typeof input === 'number' && input > 0
 
@@ -81,19 +82,38 @@ const controlsStyles = theme => ({
 const validateSettings = ({ donation, countryCode, coinCode, household }) => [
   validCountry(countryCode),
   validCoin(coinCode),
-  validInteger(donation) && greaterThanZero(donation),
+  validDonation(donation),
   validInteger(household.adults) && greaterThanZero(household.adults),
   validInteger(household.children)
 ].every(a => a)
 
-const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, onChange, onCalculate, classes }) => {
+const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, household, exchangeRate, onChange, onCalculate, setExchangeRate, classes }) => {
+  const [inflightParsing, setInflightParsing] = useState(0);
+
+  const getExchangeRate = async (coinCode) => {
+    const rate = await getCryptoExchange(coinCode)
+    setExchangeRate(rate)
+  }
+
   // change handlers
   const handleCountryChange = event => onChange({ countryCode: event.target.value })
-  const handleCoinChange = event => onChange({ coinCode: event.target.value })
+  const handleCoinChange = event => {
+    const coinCode = event.target.value
+    onChange({ coinCode })
+    getExchangeRate(coinCode)
+  }
 
   const handleIncomeChange = event => {
-    const donation = parseNumericInput(event.target.value)
-    onChange({ donation })
+    clearTimeout(inflightParsing)
+
+    const donationString = event.target.value
+    onChange({ donation: donationString })
+
+    const timeoutId = setTimeout(() => {
+      const donation = parseNumericInput(donationString)
+      onChange({ donation })
+    }, 700)
+    setInflightParsing(timeoutId)
   }
 
   const handleHouseholdChange = (event, key) => {
@@ -152,7 +172,7 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
-          <span>{getCryptoExchange(coinCode)}</span>
+          <span>{exchangeRate ? `Current ${coinCode} price: ${exchangeRate} | User amount: ${donation}` : undefined}</span>
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
@@ -259,9 +279,9 @@ const calculationStyles = theme => ({
   }
 })
 
-const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, classes }) => {
+const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, exchangeRate, classes }) => {
   try {
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ donation, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome } = calculate({ donation, countryCode, exchangeRate, household })
     if (incomeCentile <= 50) {
       return <Grid container spacing={GRID_SPACING}>
         <Grid item xs={12}>
@@ -278,7 +298,7 @@ const Calculation = withStyles(calculationStyles)(({ donation, countryCode, coin
       <Grid item xs={12}>
         <Typography className={classes.mainText}>
           If you make a donation of{' '}
-          <FormattedNumber value={donation} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={0} />
+          <FormattedNumber value={donation} style='currency' currency={coinCode} minimumFractionDigits={0} maximumFractionDigits={2} />
         </Typography>
         <Typography className={classes.subMainText}>
           (in a household of {household.adults} adult{household.adults > 1 ? 's' : ''}
@@ -318,12 +338,12 @@ const DONATION_SLIDER_MARKS = [...Array(MAX_DONATION_SLIDER_VALUE).keys()]
   .filter(v => v % 5 === 0)
   .map(v => ({ value: v, label: formatPercentage(v) }))
 
-const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, classes }) => {
+const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, exchangeRate, classes }) => {
   try {
     const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage
     //const donationValue = BigNumber(donation).minus(donationIncome).dp(2).toNumber()
     console.log("Donation Income: ", donationIncome)
-    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, coinCode, household })
+    const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, exchangeRate, household })
     const donationValue = BigNumber(equivalizedIncome * (100 + donationPercentage) / 100).dp(2).toNumber()
     console.log("Donation Value: ", donationValue)
     if (incomeCentile <= 50) return null
@@ -617,6 +637,7 @@ class _CryptoRichAmI extends React.PureComponent {
 
     this.state = {
       ...settings,
+      exchangeRate: 0,
       donationPercentage: 10,
       showCalculations: validateSettings({ ...settings }),
       showMethodologyDialog: false
@@ -631,7 +652,7 @@ class _CryptoRichAmI extends React.PureComponent {
     const settings = {}
     if (location.search) {
       const { donation, countryCode, household, country, adults, children } = qs.parse(location.search.replace(/^\?/, ''))
-      if (donation) settings.donation = parseInt(donation, 10)
+      if (donation) settings.donation = parseNumericInput(donation)
       if (countryCode) settings.countryCode = countryCode
       if (household) {
         settings.household = {}
@@ -679,6 +700,8 @@ class _CryptoRichAmI extends React.PureComponent {
 
   setShowMethodologyDialog = showMethodologyDialog => this.setState({ showMethodologyDialog })
 
+  setExchangeRate = exchangeRate => this.setState({ exchangeRate })
+
   componentDidUpdate (prevProps) {
     // update our state if we hit the back button
     if (this.props.location.search !== prevProps.location.search) {
@@ -693,7 +716,7 @@ class _CryptoRichAmI extends React.PureComponent {
     return <div className={classes.container}>
       <Heading />
       <SpacedDivider variant='middle' />
-      <Controls {...this.state} onChange={this.handleControlsChange} onCalculate={this.handleCalculate}/>
+      <Controls {...this.state} onChange={this.handleControlsChange} onCalculate={this.handleCalculate} setExchangeRate={this.setExchangeRate}/>
       {showCalculations && <React.Fragment>
         <SpacedDivider variant='middle' />
         <Calculation {...this.state} />
