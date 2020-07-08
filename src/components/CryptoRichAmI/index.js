@@ -172,7 +172,12 @@ const Controls = withStyles(controlsStyles)(({ donation, countryCode, coinCode, 
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
-          <span>{exchangeRate ? `Current ${coinCode} price: ${exchangeRate} | User amount: ${donation}` : undefined}</span>
+          <span>
+            {exchangeRate 
+                ? `${coinCode} price: ${exchangeRate} | Donation: ${donation*exchangeRate}` 
+                : undefined
+            }
+          </span>
       </Grid>
 
       <Grid item xs={12} sm={6} md={3}>
@@ -488,7 +493,6 @@ const headingStyles = theme => ({
 const Heading = withStyles(headingStyles)(({ classes }) => <header className={classes.root}>
   <Typography variant='h2'>Crypto Donation Impact Calculator</Typography>
   <Typography variant='subtitle1'>Find out how much global impact your crypto donation can have on the world</Typography>
-  <Typography variant='subtitle2'>See the original <a href="https://howrichami.givingwhatwecan.org/" target="_blank"><em>How Rich Am I?</em></a> calculator to learn how your annual income (in fiat) compares globally</Typography>
 </header>)
 
 /*const Methodology = () => <Page showTitle={false} slug='how-rich-am-i-methodology' />
@@ -535,7 +539,7 @@ const creditsStyles = theme => ({
 })
 const Credits = withStyles(creditsStyles)(({ classes }) => <div className={classes.root}>
   <Typography>
-    This project is a <a href="https://github.com/fuguefoundation/ff-impact-calculator" target="_blank">fork</a> of the <em>How Rich Am I Calculator</em> developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, a global community of people pledging to donate more, and donate more effectively. More information is available here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
+    This project is a <a href="https://github.com/fuguefoundation/ff-impact-calculator" target="_blank">fork</a> of the <em>How Rich Am I Calculator</em> developed by <a href='https://www.givingwhatwecan.org' target="_blank">Giving What We Can</a>, where you see how your annual income (in fiat) compares globally. Giving What We Can is a global community of people pledging to donate more, and donate more effectively. You can learn more here about the <a href="https://github.com/centre-for-effective-altruism/how-rich-am-i#methodology" target="_blank">methodology and data sources</a> that went into the statistics and comparisons above.
   </Typography>
 </div>)
 
