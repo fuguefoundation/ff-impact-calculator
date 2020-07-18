@@ -16,7 +16,7 @@ import Select from '@material-ui/core/Select'
 import MenuItem from '@material-ui/core/MenuItem'
 import Button from '@material-ui/core/Button'
 import CheckCircleIcon from '@material-ui/icons/CheckCircle'
-import AssessmentIcon from '@material-ui/icons/Assessment'
+//import AssessmentIcon from '@material-ui/icons/Assessment'
 import SvgIcon from '@material-ui/core/SvgIcon'
 import Slider from '@material-ui/core/Slider'
 import { FormattedNumber } from 'react-intl'
@@ -29,13 +29,13 @@ import COINS from 'lib/calculate/data/coins.json'
 import { calculate, getCurrencyCode, getCryptoExchange, getDonationComparisonAmount } from 'lib/calculate/index_crypto'
 import { COMPARISONS, MEDIAN_INCOME } from '../../lib/calculate/index_crypto'
 
-import { Page } from 'components/Contentful'
+// import { Page } from 'components/Contentful'
 
-import Dialog from '@material-ui/core/Dialog'
-import DialogTitle from '@material-ui/core/DialogTitle'
-import DialogContent from '@material-ui/core/DialogContent'
-import IconButton from '@material-ui/core/IconButton'
-import CloseIcon from '@material-ui/icons/Close'
+// import Dialog from '@material-ui/core/Dialog'
+// import DialogTitle from '@material-ui/core/DialogTitle'
+// import DialogContent from '@material-ui/core/DialogContent'
+// import IconButton from '@material-ui/core/IconButton'
+// import CloseIcon from '@material-ui/icons/Close'
 // standalone
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -345,7 +345,7 @@ const DONATION_SLIDER_MARKS = [...Array(MAX_DONATION_SLIDER_VALUE).keys()]
 
 const DonationCalculation = withStyles(calculationStyles)(({ donation, countryCode, coinCode, household, donationPercentage, onDonationPercentageChange, exchangeRate, classes }) => {
   try {
-    const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage
+    const donationIncome = BigNumber(donation * (100 + donationPercentage) / 100).dp(2).toNumber() //add donation percentage, since goal is to encourage user to donate more
     //const donationValue = BigNumber(donation).minus(donationIncome).dp(2).toNumber()
     console.log("Donation Income: ", donationIncome)
     const { incomeCentile, incomeTopPercentile, medianMultiple, equivalizedIncome, convertedIncome } = calculate({ donation: donationIncome, countryCode, exchangeRate, household })

@@ -82,7 +82,7 @@ export const equivalizeIncome = (donation, household) => BigNumber(donation)
 
 // calculate how many times the monthly median income a person's donation is
 export const getMedianMultiple = donation => BigNumber(donation)
-  .dividedBy(MEDIAN_INCOME/12) //divide for monthly rate
+  .dividedBy(MEDIAN_INCOME/12) //divide by 12 for monthly rate
   .decimalPlaces(1)
   .toNumber()
 
